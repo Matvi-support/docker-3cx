@@ -1,0 +1,14 @@
+# Don't send these to Docker daemon
+data/
+.git/
+.gitignore
+README.md
+LICENSE
+Makefile
+*.md
+*.tar
+*.tar.gz
+*.log
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  3cx:
+    build: .
+    container_name: 3cx-pbx
+    hostname: 3cx-pbx
+    restart: unless-stopped
+
+    # Required for systemd
+    privileged: true
+
+    environment:
+      - TZ=${TZ:-America/New_York}
+
+    volumes:
+      # Dynamic persistent volumes - stored in ./data directory
+      - ./data/3cxpbx:/var/lib/3cxpbx
+      - ./data/config:/etc/3cxpbx
+      - ./data/postgresql:/var/lib/postgresql
+      - ./data/logs:/var/log
+      - ./data/backups:/var/lib/3cxpbx/Data/Backups
+
+      # Required for systemd
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+
+    tmpfs:
+      - /run
+      - /run/lock
+
+    ports:
+      # Management Console
+      - "5015:5015"
+      # HTTPS
+      - "5000:5000"
+      - "5001:5001"
+      # SIP
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      # Tunnel
+      - "5090:5090/udp"
+      - "5090:5090/tcp"
+      # RTP Media
+      - "9000-9500:9000-9500/udp"
+
+    # For production VoIP, host networking works better
+    # Uncomment below and remove ports section:
+    # network_mode: host
+
+    stop_grace_period: 30s

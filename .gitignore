@@ -1,0 +1,23 @@
+# Persistent data - don't commit
+data/
+
+# Docker build artifacts
+*.tar
+*.tar.gz
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Backup files
+*.bak
+*~

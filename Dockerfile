@@ -28,28 +28,17 @@ RUN apt-get update && apt-get install -y \
 RUN wget -qO- https://repo.3cx.com/key.pub | gpg --dearmor -o /usr/share/keyrings/3cx-archive-keyring.gpg \
     && echo "deb [arch=amd64 by-hash=yes signed-by=/usr/share/keyrings/3cx-archive-keyring.gpg] http://repo.3cx.com/3cx bookworm main" > /etc/apt/sources.list.d/3cx.list
 
-# Create phonesystem user (required by 3CX)
+# Create phonesystem user (required by 3CX, persisted in image)
 RUN useradd -r -s /bin/false phonesystem
-
-# Install 3CX at build time
-# Use policy-rc.d to prevent services from starting during build (no systemd)
-RUN printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d \
-    && chmod +x /usr/sbin/policy-rc.d \
-    && apt-get update \
-    && apt-get install -y 3cxpbx \
-    && rm -f /usr/sbin/policy-rc.d \
-    && rm -f /etc/apt/sources.list.d/3cxpbx.list \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy entrypoint script
 COPY 3cx-entrypoint.sh /usr/local/bin/3cx-entrypoint.sh
 RUN chmod +x /usr/local/bin/3cx-entrypoint.sh
 
-# Create systemd service - runs on every boot to start 3CX services
+# Create systemd service - runs on every boot
 RUN printf '[Unit]\n\
-Description=3CX Startup\n\
-After=network.target postgresql.service\n\
+Description=3CX Install and Startup\n\
+After=network.target\n\
 \n\
 [Service]\n\
 Type=oneshot\n\
@@ -57,7 +46,7 @@ ExecStart=/usr/local/bin/3cx-entrypoint.sh\n\
 RemainAfterExit=yes\n\
 StandardOutput=journal+console\n\
 StandardError=journal+console\n\
-TimeoutStartSec=120\n\
+TimeoutStartSec=600\n\
 \n\
 [Install]\n\
 WantedBy=multi-user.target\n' > /etc/systemd/system/3cx-entrypoint.service \

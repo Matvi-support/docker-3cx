@@ -24,52 +24,44 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Add 3CX repository - but DO NOT install yet (requires running systemd)
-# Using repo.3cx.com for Debian 12 (bookworm)
+# Add 3CX repository
 RUN wget -qO- https://repo.3cx.com/key.pub | gpg --dearmor -o /usr/share/keyrings/3cx-archive-keyring.gpg \
     && echo "deb [arch=amd64 by-hash=yes signed-by=/usr/share/keyrings/3cx-archive-keyring.gpg] http://repo.3cx.com/3cx bookworm main" > /etc/apt/sources.list.d/3cx.list
 
-# Create phonesystem user (required by 3CX, persisted in image)
+# Create phonesystem user (required by 3CX)
 RUN useradd -r -s /bin/false phonesystem
 
-# Copy initialization script (runs on first boot via systemd)
-COPY 3cx-install.sh /usr/local/bin/3cx-install.sh
-COPY 3cx-startup.sh /usr/local/bin/3cx-startup.sh
-RUN chmod +x /usr/local/bin/3cx-install.sh /usr/local/bin/3cx-startup.sh
+# Install 3CX at build time
+# Use policy-rc.d to prevent services from starting during build (no systemd)
+RUN printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d \
+    && chmod +x /usr/sbin/policy-rc.d \
+    && apt-get update \
+    && apt-get install -y 3cxpbx \
+    && rm -f /usr/sbin/policy-rc.d \
+    && rm -f /etc/apt/sources.list.d/3cxpbx.list \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Create systemd service for first-boot 3CX installation
+# Copy entrypoint script
+COPY 3cx-entrypoint.sh /usr/local/bin/3cx-entrypoint.sh
+RUN chmod +x /usr/local/bin/3cx-entrypoint.sh
+
+# Create systemd service - runs on every boot to start 3CX services
 RUN printf '[Unit]\n\
-Description=3CX First Boot Installation\n\
-After=network.target\n\
-ConditionPathExists=!/var/lib/3cxpbx/.installed\n\
+Description=3CX Startup\n\
+After=network.target postgresql.service\n\
 \n\
 [Service]\n\
 Type=oneshot\n\
-ExecStart=/usr/local/bin/3cx-install.sh\n\
-RemainAfterExit=yes\n\
-StandardOutput=journal+console\n\
-StandardError=journal+console\n\
-TimeoutStartSec=600\n\
-\n\
-[Install]\n\
-WantedBy=multi-user.target\n' > /etc/systemd/system/3cx-install.service \
-    && systemctl enable 3cx-install.service \
-    && printf '[Unit]\n\
-Description=3CX Startup Services\n\
-After=network.target 3cx-install.service\n\
-Requires=3cx-install.service\n\
-\n\
-[Service]\n\
-Type=oneshot\n\
-ExecStart=/usr/local/bin/3cx-startup.sh\n\
+ExecStart=/usr/local/bin/3cx-entrypoint.sh\n\
 RemainAfterExit=yes\n\
 StandardOutput=journal+console\n\
 StandardError=journal+console\n\
 TimeoutStartSec=120\n\
 \n\
 [Install]\n\
-WantedBy=multi-user.target\n' > /etc/systemd/system/3cx-startup.service \
-    && systemctl enable 3cx-startup.service
+WantedBy=multi-user.target\n' > /etc/systemd/system/3cx-entrypoint.service \
+    && systemctl enable 3cx-entrypoint.service
 
 # Volumes for persistent data
 VOLUME ["/var/lib/3cxpbx", "/etc/3cxpbx", "/var/lib/postgresql", "/var/log"]

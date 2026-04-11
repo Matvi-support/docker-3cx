@@ -33,7 +33,7 @@ status: ## Show container status and ports
 	@docker exec $(CONTAINER_NAME) ss -tlnp 2>/dev/null || true
 
 update: ## Run 3CX update inside container
-	docker exec $(CONTAINER_NAME) /usr/local/bin/3cx-update.sh
+	docker exec $(CONTAINER_NAME) bash -c "apt-get update && apt-get upgrade -y 3cxpbx"
 
 clean: ## Stop and remove the container (keeps data)
 	docker stop $(CONTAINER_NAME) 2>/dev/null || true

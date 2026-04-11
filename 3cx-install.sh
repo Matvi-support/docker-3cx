@@ -27,6 +27,12 @@ fi
 
 log "First boot detected. Installing 3CX..."
 
+# Create phonesystem user before install (required by 3CX)
+if ! id -u phonesystem >/dev/null 2>&1; then
+    log "Creating phonesystem user..."
+    useradd -r -s /bin/false phonesystem
+fi
+
 # Update package lists
 log "Updating package lists..."
 apt-get update
@@ -34,6 +40,11 @@ apt-get update
 # Install 3CX PBX
 log "Installing 3cxpbx package..."
 apt-get install -y 3cxpbx
+
+# Remove duplicate repo file created by the package
+if [ -f /etc/apt/sources.list.d/3cxpbx.list ]; then
+    rm -f /etc/apt/sources.list.d/3cxpbx.list
+fi
 
 # Wait for services to settle
 log "Waiting for services to initialize..."

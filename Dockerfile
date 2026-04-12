@@ -53,7 +53,9 @@ WantedBy=multi-user.target\n' > /etc/systemd/system/3cx-entrypoint.service \
     && systemctl enable 3cx-entrypoint.service
 
 # Volumes for persistent data
-VOLUME ["/var/lib/3cxpbx", "/etc/3cxpbx", "/var/lib/postgresql", "/var/log"]
+# /var/cache/apt/archives: keeps downloaded .deb so reinstall is fast (no re-download)
+# /etc/postgresql: keeps PostgreSQL cluster config alive across container recreations
+VOLUME ["/var/lib/3cxpbx", "/etc/3cxpbx", "/var/lib/postgresql", "/etc/postgresql", "/var/log", "/var/cache/apt/archives"]
 
 # 3CX Ports
 EXPOSE 5015 5000 5001 5060/udp 5060/tcp 5090/udp 5090/tcp 9000-10999/udp

@@ -21,6 +21,9 @@ fi
 if ! dpkg -s 3cxpbx >/dev/null 2>&1; then
     log "3CX not installed. Installing..."
 
+    # Keep downloaded .deb files in the cache volume (fast reinstall)
+    rm -f /etc/apt/apt.conf.d/docker-clean
+
     apt-get update
     apt-get install -y 3cxpbx
 
@@ -35,12 +38,22 @@ else
     log "3CX already installed."
 fi
 
-# Ensure PostgreSQL cluster exists with correct encoding
+# Ensure PostgreSQL cluster is registered
+# Cluster config lives in /etc/postgresql (not persisted), but data is in /var/lib/postgresql (persisted)
 if ! pg_lsclusters -h 2>/dev/null | grep -q '^15 *main'; then
-    log "Creating PostgreSQL cluster with UTF-8 encoding..."
-    # Clean any leftover data from a broken cluster
-    rm -rf /var/lib/postgresql/15/main
-    pg_createcluster 15 main --locale=C.UTF-8 --encoding=UTF8
+    if [ -f /var/lib/postgresql/15/main/PG_VERSION ]; then
+        log "PostgreSQL data found but cluster not registered. Re-registering existing cluster..."
+        mkdir -p /etc/postgresql/15/main
+        # Re-create the cluster config pointing to existing data
+        pg_createcluster 15 main \
+            --datadir=/var/lib/postgresql/15/main \
+            --user=postgres \
+            --group=postgres || true
+    else
+        log "Creating new PostgreSQL cluster with UTF-8 encoding..."
+        rm -rf /var/lib/postgresql/15/main
+        pg_createcluster 15 main --locale=C.UTF-8 --encoding=UTF8
+    fi
 fi
 
 # Ensure TimescaleDB is preloaded (required by 3CX)

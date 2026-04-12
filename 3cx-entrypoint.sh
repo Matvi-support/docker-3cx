@@ -39,16 +39,18 @@ else
 fi
 
 # Ensure PostgreSQL cluster is registered
-# Cluster config lives in /etc/postgresql (not persisted), but data is in /var/lib/postgresql (persisted)
+# Cluster config lives in /etc/postgresql (persisted via volume), data in /var/lib/postgresql (persisted)
 if ! pg_lsclusters -h 2>/dev/null | grep -q '^15 *main'; then
     if [ -f /var/lib/postgresql/15/main/PG_VERSION ]; then
-        log "PostgreSQL data found but cluster not registered. Re-registering existing cluster..."
-        mkdir -p /etc/postgresql/15/main
-        # Re-create the cluster config pointing to existing data
-        pg_createcluster 15 main \
-            --datadir=/var/lib/postgresql/15/main \
-            --user=postgres \
-            --group=postgres || true
+        log "PostgreSQL data found but cluster config missing. Regenerating config while preserving data..."
+        # Move existing data aside
+        mv /var/lib/postgresql/15/main /var/lib/postgresql/15/main.preserved
+        # Create fresh cluster (generates /etc/postgresql/15/main/* config files + empty data)
+        pg_createcluster 15 main --locale=C.UTF-8 --encoding=UTF8
+        # Replace fresh data with preserved data
+        rm -rf /var/lib/postgresql/15/main
+        mv /var/lib/postgresql/15/main.preserved /var/lib/postgresql/15/main
+        chown -R postgres:postgres /var/lib/postgresql/15/main
     else
         log "Creating new PostgreSQL cluster with UTF-8 encoding..."
         rm -rf /var/lib/postgresql/15/main

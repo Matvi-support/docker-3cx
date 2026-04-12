@@ -84,8 +84,19 @@ if ! su - postgres -c "psql -tAc \"SELECT 1 FROM pg_roles WHERE rolname='phonesy
     su - postgres -c "psql -c \"CREATE ROLE phonesystem WITH LOGIN SUPERUSER;\"" || true
 fi
 
-# Start the web configuration tool
-log "Starting 3CX Web Configuration Tool..."
-/usr/sbin/3CXLaunchWebConfigTool || true
+# Enable 3CX services (they are installed disabled by default)
+log "Enabling 3CX services..."
+for svc in 3CXPhoneSystem01 3CXPhoneSystemMC01 3CXCfgServ01 3CXSystemService01 \
+           3CXMediaServer 3CXEventNotificationManager 3CXIVR01 3CXCallFlow01 \
+           3CXQueueManager01 3CXAudioProvider01 3CXGatewayService 3CXAI; do
+    systemctl enable "$svc" 2>/dev/null || true
+    systemctl start "$svc" 2>/dev/null || true
+done
+
+# Start the web configuration tool (only if not already running)
+if ! pgrep -f PbxWebConfigTool >/dev/null; then
+    log "Starting 3CX Web Configuration Tool..."
+    /usr/sbin/3CXLaunchWebConfigTool || true
+fi
 
 log "3CX startup complete. Console: http://<your-ip>:5015"

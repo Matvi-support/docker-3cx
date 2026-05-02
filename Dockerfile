@@ -1,7 +1,7 @@
 # 3CX on Debian Docker Container
 # Uses jrei/systemd-debian for proper systemd support
 
-FROM jrei/systemd-debian:bookworm
+FROM --platform=linux/amd64 jrei/systemd-debian:bookworm-latest
 
 LABEL maintainer="docker-3cx"
 LABEL description="3CX Phone System on Debian 12 with systemd"

@@ -1,7 +1,7 @@
 # 3CX on Debian Docker Container
-# Uses jrei/systemd-debian for proper systemd support
+# Uses geerlingguy/docker-debian12-ansible for proper systemd support (multi-arch)
 
-FROM --platform=linux/amd64 jrei/systemd-debian:bookworm-latest
+FROM --platform=linux/amd64 geerlingguy/docker-debian12-ansible:latest
 
 LABEL maintainer="docker-3cx"
 LABEL description="3CX Phone System on Debian 12 with systemd"
